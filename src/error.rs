@@ -23,6 +23,21 @@ impl ParseError {
         self.hint = Some(hint.into());
         self
     }
+
+    /// Create a `ParseError` from a policy violation. Uses a sentinel span
+    /// (line 1, col 1) since `PolicyError` has no source location.
+    pub fn from_policy(e: PolicyError) -> Self {
+        Self::new(e.code, e.message, Span::single_line(1, 1, 1))
+    }
+
+    /// Create a `ParseError` for a policy violation at a known line.
+    pub fn policy_at(
+        code: impl Into<String>,
+        message: impl Into<String>,
+        line: u32,
+    ) -> Self {
+        Self::new(code, message, Span::single_line(line, 1, 1))
+    }
 }
 
 impl std::fmt::Display for ParseError {
