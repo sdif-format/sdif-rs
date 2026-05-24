@@ -4,8 +4,7 @@
 //! accepts all valid cases and rejects all invalid cases with the expected
 //! error code.
 
-use sdif_rs::parser::{parse_text, parse_text_with_policy};
-use sdif_rs::Policy;
+use sdif_rs::parser::parse_text;
 use std::path::Path;
 
 const SDIF_ROOT: &str = "../sdif-spec";
