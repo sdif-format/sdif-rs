@@ -1,8 +1,8 @@
 //! Normative parser for SDIF v1 source and AI projection syntax.
 //!
 //! Ported from the Python reference implementation in
-//! `sdif/src/sdif/parser/parser.py`. Span tracking is added to every AST
-//! node; all error codes are identical to the Python implementation.
+//! `sdif/src/sdif/parser/parser.py`. Spans are tracked only on ParseError
+//! (for diagnostics); all error codes are identical to the Python implementation.
 
 use crate::ast::{
     Directive, Document, Field, Narrative, ObjectBlock, Relation, Rule, RuleArg, RuleCall,
