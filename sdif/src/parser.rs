@@ -426,6 +426,7 @@ impl<'a> Parser<'a> {
         self.index += 1;
         let child_indent = indent + 2;
         let mut rows: Vec<Vec<String>> = Vec::new();
+        let mut quoted_cols: std::collections::BTreeSet<usize> = std::collections::BTreeSet::new();
 
         loop {
             if self.index >= self.lines.len() {
@@ -477,8 +478,11 @@ impl<'a> Parser<'a> {
                 .with_hint("check HTAB separators and missing cells"));
             }
 
-            for cell in &cells {
+            for (i, cell) in cells.iter().enumerate() {
                 self.check_string_length(cell, "Table cell")?;
+                if is_quoted(cell) {
+                    quoted_cols.insert(i);
+                }
             }
 
             rows.push(cells);
@@ -497,11 +501,12 @@ impl<'a> Parser<'a> {
             self.index += 1;
         }
 
+        let quoted_columns: Vec<usize> = quoted_cols.into_iter().collect();
         Ok(Table {
             name: name.to_string(),
             columns,
             rows,
-            quoted_columns: Vec::new(),
+            quoted_columns,
         })
     }
 

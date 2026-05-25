@@ -419,6 +419,26 @@ fn table_quoted_columns_is_empty_for_plain_headers() {
     assert_eq!(t.quoted_columns, Vec::<usize>::new());
 }
 
+#[test]
+fn table_tracks_quoted_columns() {
+    use sdif::Statement;
+    let src = "@sdif 1.0\npeople[id,name]:\n  1\t\"Alice\"\n  2\t\"Bob\"\n";
+    let doc = sdif::parser::parse_text(src).unwrap();
+    let Statement::Table(t) = &doc.statements[0] else { panic!("expected Table") };
+    // column index 1 ("name") is always quoted
+    assert!(t.quoted_columns.contains(&1), "column 1 should be quoted");
+    assert!(!t.quoted_columns.contains(&0), "column 0 should not be quoted");
+}
+
+#[test]
+fn table_quoted_columns_empty_when_no_quotes() {
+    use sdif::Statement;
+    let src = "@sdif 1.0\npeople[id,name]:\n  1\talice\n  2\tbob\n";
+    let doc = sdif::parser::parse_text(src).unwrap();
+    let Statement::Table(t) = &doc.statements[0] else { panic!("expected Table") };
+    assert!(t.quoted_columns.is_empty());
+}
+
 // ---------------------------------------------------------------------------
 // Accessor iterator methods
 // ---------------------------------------------------------------------------
@@ -454,4 +474,50 @@ fn policy_allowed_include_paths_defaults_empty() {
     use sdif::Policy;
     let p = Policy::default();
     assert!(p.allowed_include_paths.is_empty());
+}
+
+// ---------------------------------------------------------------------------
+// parse_file() — include resolution tests
+// ---------------------------------------------------------------------------
+
+use std::fs;
+use std::path::PathBuf;
+
+fn temp_sdif(name: &str, content: &str) -> PathBuf {
+    let path = std::env::temp_dir().join(name);
+    fs::write(&path, content).unwrap();
+    path
+}
+
+#[test]
+fn parse_file_basic() {
+    let path = temp_sdif("pf_basic.sdif", "@sdif 1.0\nkind Test\n");
+    let doc = sdif::parser::parse_file(&path, &sdif::Policy::default()).unwrap();
+    assert_eq!(doc.fields().find(|f| f.key == "kind").unwrap().value, "Test");
+}
+
+#[test]
+fn parse_file_include_disabled_by_default() {
+    let inc = temp_sdif("pf_inc.sdif", "@sdif 1.0\nkind Inner\n");
+    let main_content = format!("@sdif 1.0\n@include \"{}\"\n", inc.display());
+    let main = temp_sdif("pf_main.sdif", &main_content);
+    let err = sdif::parser::parse_file(&main, &sdif::Policy::default()).unwrap_err();
+    assert_eq!(err.code, "SDIF_POLICY_INCLUDE");
+}
+
+#[test]
+fn parse_file_cycle_detected() {
+    use std::collections::HashSet;
+    let dir = std::env::temp_dir();
+    let a = dir.join("pf_cycle_a.sdif");
+    let b = dir.join("pf_cycle_b.sdif");
+    fs::write(&a, format!("@sdif 1.0\n@include \"{}\"\n", b.display())).unwrap();
+    fs::write(&b, format!("@sdif 1.0\n@include \"{}\"\n", a.display())).unwrap();
+    let policy = sdif::Policy {
+        allow_includes: true,
+        allowed_include_paths: HashSet::from([dir.clone()]),
+        ..sdif::Policy::default()
+    };
+    let err = sdif::parser::parse_file(&a, &policy).unwrap_err();
+    assert_eq!(err.code, "SDIF_POLICY_INCLUDE_CYCLE");
 }
