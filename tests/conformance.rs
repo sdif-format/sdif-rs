@@ -1,6 +1,6 @@
 //! Conformance tests for the SDIF parser.
 //!
-//! Reads fixtures from `../sdif/conformance/` and verifies that the parser
+//! Reads fixtures from `../sdif-spec/conformance/` and verifies that the parser
 //! accepts all valid cases and rejects all invalid cases with the expected
 //! error code.
 
