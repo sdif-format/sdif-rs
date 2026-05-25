@@ -478,14 +478,18 @@ impl<'a> Parser<'a> {
                 .with_hint("check HTAB separators and missing cells"));
             }
 
+            let mut unquoted_cells: Vec<String> = Vec::with_capacity(cells.len());
             for (i, cell) in cells.iter().enumerate() {
                 self.check_string_length(cell, "Table cell")?;
                 if is_quoted(cell) {
                     quoted_cols.insert(i);
+                    unquoted_cells.push(unquote(cell).to_string());
+                } else {
+                    unquoted_cells.push(cell.clone());
                 }
             }
 
-            rows.push(cells);
+            rows.push(unquoted_cells);
 
             if rows.len() > self.policy.max_table_row_count {
                 return Err(ParseError::from_policy(PolicyError::new(
