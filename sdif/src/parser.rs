@@ -1275,6 +1275,209 @@ fn to_rule_expression(action: &str, args: &[RuleArg]) -> Result<RuleExpression, 
 }
 
 // ---------------------------------------------------------------------------
+// parse_file and include resolution
+// ---------------------------------------------------------------------------
+
+use std::path::{Path, PathBuf};
+
+/// Parse an SDIF file at `path`, resolving `@include` directives according to
+/// `policy`. Returns the merged `Document` with all included content inlined.
+///
+/// Error codes raised by this function:
+/// - `SDIF_POLICY_INCLUDE` — includes disabled by policy
+/// - `SDIF_POLICY_INCLUDE_PATH` — path not in allowlist or cannot be resolved
+/// - `SDIF_POLICY_INCLUDE_CYCLE` — circular include detected
+/// - `SDIF_POLICY_INCLUDE_DEPTH` — nesting exceeds `policy.max_include_depth`
+/// - `SDIF_POLICY_REMOTE_INCLUDE` — remote URL include attempted
+/// - `SDIF_POLICY_EXPANDED_BYTES` — cumulative bytes limit exceeded
+pub fn parse_file(path: &Path, policy: &Policy) -> Result<Document, ParseError> {
+    let mut seen: Vec<PathBuf> = Vec::new();
+    let mut expanded_bytes: usize = 0;
+    parse_file_inner(path, policy, &mut seen, &mut expanded_bytes)
+}
+
+fn parse_file_inner(
+    path: &Path,
+    policy: &Policy,
+    seen: &mut Vec<PathBuf>,
+    expanded_bytes: &mut usize,
+) -> Result<Document, ParseError> {
+    // Resolve the canonical (absolute, symlink-free) path.
+    let abs = path.canonicalize().map_err(|e| {
+        ParseError::new(
+            "SDIF_POLICY_INCLUDE_PATH",
+            format!("Cannot resolve path {}: {e}", path.display()),
+            Span::single_line(1, 1, 1),
+        )
+    })?;
+
+    // Depth check (before pushing onto the stack).
+    if seen.len() >= policy.max_include_depth {
+        return Err(ParseError::new(
+            "SDIF_POLICY_INCLUDE_DEPTH",
+            format!(
+                "Include depth {} exceeds maximum of {}",
+                seen.len(),
+                policy.max_include_depth
+            ),
+            Span::single_line(1, 1, 1),
+        ));
+    }
+
+    // Cycle check.
+    if seen.contains(&abs) {
+        let cycle = seen
+            .iter()
+            .map(|p| p.display().to_string())
+            .collect::<Vec<_>>()
+            .join(" -> ");
+        return Err(ParseError::new(
+            "SDIF_POLICY_INCLUDE_CYCLE",
+            format!("Include cycle detected: {cycle} -> {}", abs.display()),
+            Span::single_line(1, 1, 1),
+        ));
+    }
+
+    let content = std::fs::read_to_string(&abs).map_err(|e| {
+        ParseError::new(
+            "SDIF_POLICY_INCLUDE_PATH",
+            format!("Cannot read {}: {e}", abs.display()),
+            Span::single_line(1, 1, 1),
+        )
+    })?;
+
+    *expanded_bytes += content.len();
+    if *expanded_bytes > policy.max_expanded_bytes {
+        return Err(ParseError::new(
+            "SDIF_POLICY_EXPANDED_BYTES",
+            format!(
+                "Total expanded bytes {} exceeds limit of {}",
+                expanded_bytes, policy.max_expanded_bytes
+            ),
+            Span::single_line(1, 1, 1),
+        ));
+    }
+
+    seen.push(abs.clone());
+    let doc = parse_text_with_policy(&content, policy)?;
+
+    let mut merged_directives: Vec<Directive> = Vec::new();
+    let mut merged_statements: Vec<Statement> = Vec::new();
+
+    for directive in doc.directives {
+        if directive.name == "include" {
+            // Gate: includes must be explicitly enabled.
+            if !policy.allow_includes {
+                seen.pop();
+                return Err(ParseError::new(
+                    "SDIF_POLICY_INCLUDE",
+                    "Includes are disabled by policy",
+                    Span::single_line(1, 1, 1),
+                ));
+            }
+            let target = resolve_include_path(&directive.args, &abs, policy)?;
+            let included = parse_file_inner(&target, policy, seen, expanded_bytes)?;
+            // Merge: statements from included doc come first, then parent
+            // statements will follow. Non-version directives are inlined.
+            merged_statements.extend(included.statements);
+            for d in included.directives {
+                if !matches!(d.name.as_str(), "include" | "sdif" | "sdif.ai") {
+                    merged_directives.push(d);
+                }
+            }
+        } else {
+            merged_directives.push(directive);
+        }
+    }
+
+    seen.pop();
+    // Parent's own statements follow included content.
+    merged_statements.extend(doc.statements);
+
+    Ok(Document {
+        directives: merged_directives,
+        statements: merged_statements,
+    })
+}
+
+/// Resolve an `@include` path argument to an absolute `PathBuf`, checking the
+/// policy allowlist. Returns `SDIF_POLICY_REMOTE_INCLUDE` for URLs and
+/// `SDIF_POLICY_INCLUDE_PATH` if the resolved path is not in the allowlist.
+fn resolve_include_path(
+    args: &[String],
+    parent_file: &Path,
+    policy: &Policy,
+) -> Result<PathBuf, ParseError> {
+    let sentinel = Span::single_line(1, 1, 1);
+
+    let raw = args.first().ok_or_else(|| {
+        ParseError::new("SDIF_POLICY_INCLUDE", "Empty include directive", sentinel)
+    })?;
+
+    // Strip surrounding double-quotes if present.
+    let target_str = raw.trim_matches('"');
+
+    // Remote URL check — always rejected; remote includes are not supported.
+    if target_str.starts_with("http://")
+        || target_str.starts_with("https://")
+        || target_str.starts_with("ftp://")
+    {
+        return Err(ParseError::new(
+            "SDIF_POLICY_REMOTE_INCLUDE",
+            format!("Remote include of {target_str} is disabled by policy"),
+            sentinel,
+        ));
+    }
+
+    let target_path = std::path::Path::new(target_str);
+    let resolved = if target_path.is_absolute() {
+        target_path.to_path_buf()
+    } else {
+        parent_file
+            .parent()
+            .unwrap_or(parent_file)
+            .join(target_path)
+    };
+
+    let resolved = resolved.canonicalize().map_err(|e| {
+        ParseError::new(
+            "SDIF_POLICY_INCLUDE_PATH",
+            format!("Cannot resolve include path {target_str}: {e}"),
+            sentinel,
+        )
+    })?;
+
+    // Allowlist check: Python semantics — empty allowlist means NO path is
+    // permitted. Callers must populate `allowed_include_paths` to grant access.
+    if policy.allowed_include_paths.is_empty() {
+        return Err(ParseError::new(
+            "SDIF_POLICY_INCLUDE_PATH",
+            format!("Include path {target_str} is not permitted: allowed_include_paths is empty"),
+            sentinel,
+        ));
+    }
+
+    let allowed = policy.allowed_include_paths.iter().any(|allowed| {
+        allowed.canonicalize().ok().is_some_and(|abs_allowed| {
+            resolved == abs_allowed || resolved.starts_with(&abs_allowed)
+        })
+    });
+
+    if !allowed {
+        return Err(ParseError::new(
+            "SDIF_POLICY_INCLUDE_PATH",
+            format!(
+                "Include path {target_str} (resolved to {}) is not permitted by policy allowlist",
+                resolved.display()
+            ),
+            sentinel,
+        ));
+    }
+
+    Ok(resolved)
+}
+
+// ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
 

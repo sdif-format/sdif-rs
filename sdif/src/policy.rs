@@ -18,7 +18,8 @@ pub struct Policy {
     /// Allow `@include` directives.
     pub allow_includes: bool,
     /// Allowlist of filesystem paths from which `@include` directives may load
-    /// files. An empty set means no path restriction beyond `allow_includes`.
+    /// files. An empty set means **no path is permitted** — callers must
+    /// populate this set to enable any file inclusion (Python semantics).
     /// Mirrors `allowed_include_paths: frozenset[Path]` in the Python Policy.
     pub allowed_include_paths: HashSet<PathBuf>,
     /// Allow `@include` directives that reference remote URLs.

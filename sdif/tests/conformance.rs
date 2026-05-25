@@ -415,7 +415,9 @@ fn table_quoted_columns_is_empty_for_plain_headers() {
     use sdif::Statement;
     let src = "@sdif 1.0\npeople[name,age]:\n  alice\t30\n";
     let doc = sdif::parser::parse_text(src).unwrap();
-    let Statement::Table(t) = &doc.statements[0] else { panic!("expected Table") };
+    let Statement::Table(t) = &doc.statements[0] else {
+        panic!("expected Table")
+    };
     assert_eq!(t.quoted_columns, Vec::<usize>::new());
 }
 
@@ -424,10 +426,15 @@ fn table_tracks_quoted_columns() {
     use sdif::Statement;
     let src = "@sdif 1.0\npeople[id,name]:\n  1\t\"Alice\"\n  2\t\"Bob\"\n";
     let doc = sdif::parser::parse_text(src).unwrap();
-    let Statement::Table(t) = &doc.statements[0] else { panic!("expected Table") };
+    let Statement::Table(t) = &doc.statements[0] else {
+        panic!("expected Table")
+    };
     // column index 1 ("name") is always quoted
     assert!(t.quoted_columns.contains(&1), "column 1 should be quoted");
-    assert!(!t.quoted_columns.contains(&0), "column 0 should not be quoted");
+    assert!(
+        !t.quoted_columns.contains(&0),
+        "column 0 should not be quoted"
+    );
 }
 
 #[test]
@@ -435,7 +442,9 @@ fn table_quoted_columns_empty_when_no_quotes() {
     use sdif::Statement;
     let src = "@sdif 1.0\npeople[id,name]:\n  1\talice\n  2\tbob\n";
     let doc = sdif::parser::parse_text(src).unwrap();
-    let Statement::Table(t) = &doc.statements[0] else { panic!("expected Table") };
+    let Statement::Table(t) = &doc.statements[0] else {
+        panic!("expected Table")
+    };
     assert!(t.quoted_columns.is_empty());
 }
 
@@ -464,7 +473,9 @@ fn object_block_fields_accessor() {
     use sdif::Statement;
     let src = "@sdif 1.0\ncontact:\n  name Alice\n  email a@b.com\n";
     let doc = sdif::parser::parse_text(src).unwrap();
-    let Statement::ObjectBlock(obj) = &doc.statements[0] else { panic!("expected ObjectBlock") };
+    let Statement::ObjectBlock(obj) = &doc.statements[0] else {
+        panic!("expected ObjectBlock")
+    };
     let keys: Vec<&str> = obj.fields().map(|f| f.key.as_str()).collect();
     assert_eq!(keys, ["name", "email"]);
 }
@@ -493,7 +504,10 @@ fn temp_sdif(name: &str, content: &str) -> PathBuf {
 fn parse_file_basic() {
     let path = temp_sdif("pf_basic.sdif", "@sdif 1.0\nkind Test\n");
     let doc = sdif::parser::parse_file(&path, &sdif::Policy::default()).unwrap();
-    assert_eq!(doc.fields().find(|f| f.key == "kind").unwrap().value, "Test");
+    assert_eq!(
+        doc.fields().find(|f| f.key == "kind").unwrap().value,
+        "Test"
+    );
 }
 
 #[test]
