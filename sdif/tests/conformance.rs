@@ -535,3 +535,38 @@ fn parse_file_cycle_detected() {
     let err = sdif::parser::parse_file(&a, &policy).unwrap_err();
     assert_eq!(err.code, "SDIF_POLICY_INCLUDE_CYCLE");
 }
+
+// ---------------------------------------------------------------------------
+// JSON module
+// ---------------------------------------------------------------------------
+
+#[test]
+fn to_json_scalar_fields() {
+    use sdif::document_to_json;
+    let src = "@sdif 1.0\nkind Agent\nid foo\n";
+    let doc = sdif::parser::parse_text(src).unwrap();
+    let json = document_to_json(&doc);
+    assert_eq!(json["kind"], "Agent");
+    assert_eq!(json["id"], "foo");
+}
+
+#[test]
+fn to_json_table_rows() {
+    use sdif::document_to_json;
+    // IMPORTANT: table rows use HTAB separators
+    let src = "@sdif 1.0\npeople[id,age]:\n  alice\t30\n  bob\t25\n";
+    let doc = sdif::parser::parse_text(src).unwrap();
+    let json = document_to_json(&doc);
+    assert!(json["people"].is_array());
+    assert_eq!(json["people"][0]["id"], "alice");
+    assert_eq!(json["people"][0]["age"], "30");
+}
+
+#[test]
+fn from_json_produces_parseable_sdif() {
+    use sdif::json_to_sdif;
+    let data = serde_json::json!({"kind": "Test", "id": "x1"});
+    let sdif_text = json_to_sdif(&data);
+    let doc = sdif::parser::parse_text(&sdif_text).unwrap();
+    assert_eq!(doc.fields().find(|f| f.key == "id").unwrap().value, "x1");
+}
