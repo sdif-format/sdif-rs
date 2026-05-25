@@ -117,7 +117,10 @@ impl<'a> Parser<'a> {
             ));
         }
 
-        Ok(Document { directives, statements })
+        Ok(Document {
+            directives,
+            statements,
+        })
     }
 
     // -----------------------------------------------------------------------
@@ -182,7 +185,9 @@ impl<'a> Parser<'a> {
                     ));
                 }
                 let rels = self.parse_relations_for_subject(&cols_raw, indent, line_no)?;
-                return Ok(ParsedItem::Stmts(rels.into_iter().map(Statement::Relation).collect()));
+                return Ok(ParsedItem::Stmts(
+                    rels.into_iter().map(Statement::Relation).collect(),
+                ));
             }
             let tbl = self.parse_table(&name, &cols_raw, indent, line_no)?;
             return Ok(ParsedItem::Stmt(Statement::Table(tbl)));
@@ -190,13 +195,18 @@ impl<'a> Parser<'a> {
 
         // --- block opener ---
         if let Some(key) = parse_block_key(&stripped_body) {
-            if key == "rel" || self.alias_to_canonical.get(&key).map(|s| s.as_str()) == Some("rel") {
+            if key == "rel" || self.alias_to_canonical.get(&key).map(|s| s.as_str()) == Some("rel")
+            {
                 let rels = self.parse_relations(indent, line_no)?;
-                return Ok(ParsedItem::Stmts(rels.into_iter().map(Statement::Relation).collect()));
+                return Ok(ParsedItem::Stmts(
+                    rels.into_iter().map(Statement::Relation).collect(),
+                ));
             }
             if key == "rules" {
                 let rules = self.parse_rules(indent, line_no)?;
-                return Ok(ParsedItem::Stmts(rules.into_iter().map(Statement::Rule).collect()));
+                return Ok(ParsedItem::Stmts(
+                    rules.into_iter().map(Statement::Rule).collect(),
+                ));
             }
             let obj = self.parse_object(&key, indent, line_no)?;
             return Ok(ParsedItem::Stmt(Statement::ObjectBlock(obj)));
@@ -230,8 +240,15 @@ impl<'a> Parser<'a> {
         let name = parts[0];
         let args: Vec<String> = parts[1..].iter().map(|s| s.to_string()).collect();
 
-        const KNOWN: &[&str] =
-            &["sdif", "sdif.ai", "profile", "vocab", "base", "namespace", "include"];
+        const KNOWN: &[&str] = &[
+            "sdif",
+            "sdif.ai",
+            "profile",
+            "vocab",
+            "base",
+            "namespace",
+            "include",
+        ];
         if !KNOWN.contains(&name) {
             return Err(ParseError::new(
                 "SDIF_DIRECTIVE_UNKNOWN",
@@ -271,18 +288,18 @@ impl<'a> Parser<'a> {
         }
 
         let span = Span::single_line(line_no, indent + 1, indent + 1 + body.len() as u32);
-        Ok(Directive { name: name.to_string(), args, span })
+        Ok(Directive {
+            name: name.to_string(),
+            args,
+            span,
+        })
     }
 
     // -----------------------------------------------------------------------
     // Alias
     // -----------------------------------------------------------------------
 
-    fn apply_aliases(
-        &mut self,
-        entries: &[String],
-        line_no: u32,
-    ) -> Result<Directive, ParseError> {
+    fn apply_aliases(&mut self, entries: &[String], line_no: u32) -> Result<Directive, ParseError> {
         for entry in entries {
             let Some(eq) = entry.find('=') else {
                 return Err(ParseError::new(
@@ -380,7 +397,11 @@ impl<'a> Parser<'a> {
         }
 
         self.current_nesting_depth -= 1;
-        let end_line = if self.index > 0 { self.index as u32 } else { start_line };
+        let end_line = if self.index > 0 {
+            self.index as u32
+        } else {
+            start_line
+        };
         Ok(ObjectBlock {
             key: key.to_string(),
             statements,
@@ -413,8 +434,11 @@ impl<'a> Parser<'a> {
             ));
         }
 
-        let header_span =
-            Span::single_line(line_no, indent + 1, indent + 1 + self.lines[self.index - 1].len() as u32);
+        let header_span = Span::single_line(
+            line_no,
+            indent + 1,
+            indent + 1 + self.lines[self.index - 1].len() as u32,
+        );
 
         self.index += 1;
         let child_indent = indent + 2;
@@ -490,7 +514,11 @@ impl<'a> Parser<'a> {
             self.index += 1;
         }
 
-        let end_line = if self.index > 0 { self.index as u32 } else { line_no };
+        let end_line = if self.index > 0 {
+            self.index as u32
+        } else {
+            line_no
+        };
         Ok(Table {
             name: name.to_string(),
             columns,
@@ -504,11 +532,7 @@ impl<'a> Parser<'a> {
     // Relations
     // -----------------------------------------------------------------------
 
-    fn parse_relations(
-        &mut self,
-        indent: u32,
-        _line_no: u32,
-    ) -> Result<Vec<Relation>, ParseError> {
+    fn parse_relations(&mut self, indent: u32, _line_no: u32) -> Result<Vec<Relation>, ParseError> {
         self.index += 1;
         let child_indent = indent + 2;
         let mut relations: Vec<Relation> = Vec::new();
@@ -535,11 +559,8 @@ impl<'a> Parser<'a> {
                 ));
             }
             let row_text = &raw[child_indent as usize..];
-            let parts = split_quoted_whitespace(
-                &strip_inline_comment(row_text),
-                row_no,
-                "SDIF_REL_QUOTE",
-            )?;
+            let parts =
+                split_quoted_whitespace(&strip_inline_comment(row_text), row_no, "SDIF_REL_QUOTE")?;
             if parts.len() != 3 {
                 return Err(ParseError::new(
                     "SDIF_REL_ARITY",
@@ -598,11 +619,8 @@ impl<'a> Parser<'a> {
                 ));
             }
             let row_text = &raw[child_indent as usize..];
-            let parts = split_quoted_whitespace(
-                &strip_inline_comment(row_text),
-                row_no,
-                "SDIF_REL_QUOTE",
-            )?;
+            let parts =
+                split_quoted_whitespace(&strip_inline_comment(row_text), row_no, "SDIF_REL_QUOTE")?;
             if parts.len() != 2 {
                 return Err(ParseError::new(
                     "SDIF_REL_ARITY",
@@ -633,11 +651,7 @@ impl<'a> Parser<'a> {
     // Rules
     // -----------------------------------------------------------------------
 
-    fn parse_rules(
-        &mut self,
-        indent: u32,
-        _line_no: u32,
-    ) -> Result<Vec<Rule>, ParseError> {
+    fn parse_rules(&mut self, indent: u32, _line_no: u32) -> Result<Vec<Rule>, ParseError> {
         self.index += 1;
         let child_indent = indent + 2;
         let mut rules: Vec<Rule> = Vec::new();
@@ -663,10 +677,20 @@ impl<'a> Parser<'a> {
                     Span::single_line(row_no, actual + 1, actual + 1),
                 ));
             }
-            let source = strip_inline_comment(&raw[child_indent as usize..]).trim().to_string();
-            let span = Span::single_line(row_no, child_indent + 1, child_indent + 1 + source.len() as u32);
+            let source = strip_inline_comment(&raw[child_indent as usize..])
+                .trim()
+                .to_string();
+            let span = Span::single_line(
+                row_no,
+                child_indent + 1,
+                child_indent + 1 + source.len() as u32,
+            );
             let expression = tokenize_and_parse_rule(&source, row_no)?;
-            rules.push(Rule { source, expression: Some(expression), span });
+            rules.push(Rule {
+                source,
+                expression: Some(expression),
+                span,
+            });
             self.index += 1;
         }
         Ok(rules)
@@ -756,7 +780,12 @@ enum ParsedItem {
 // Field parsing (free function — no parser state needed)
 // ---------------------------------------------------------------------------
 
-fn parse_field(body: &str, line_no: u32, indent: u32, policy: &Policy) -> Result<Field, ParseError> {
+fn parse_field(
+    body: &str,
+    line_no: u32,
+    indent: u32,
+    policy: &Policy,
+) -> Result<Field, ParseError> {
     let clean = strip_inline_comment(body);
     // A field must contain at least one whitespace separator between key and value.
     if !clean.contains(' ') && !clean.contains('\t') {
@@ -800,7 +829,11 @@ fn parse_field(body: &str, line_no: u32, indent: u32, policy: &Policy) -> Result
     // Find where the value starts in the clean body.
     let value_offset_in_clean = sep + (clean[sep..].len() - clean[sep..].trim_start().len());
     let value_start_col = indent + 1 + value_offset_in_clean as u32;
-    let value_content_start = if quoted { value_start_col + 1 } else { value_start_col };
+    let value_content_start = if quoted {
+        value_start_col + 1
+    } else {
+        value_start_col
+    };
     let value_content_end = value_content_start + unquoted.len() as u32;
 
     Ok(Field {
@@ -1134,9 +1167,7 @@ fn tokenize_rule(source: &str) -> Vec<String> {
         }
         // Identifier / number token.
         let start = i;
-        while i < chars.len()
-            && (chars[i].is_alphanumeric() || "_-./:[]".contains(chars[i]))
-        {
+        while i < chars.len() && (chars[i].is_alphanumeric() || "_-./:[]".contains(chars[i])) {
             i += 1;
         }
         if i > start {
@@ -1190,7 +1221,13 @@ fn parse_rule_node(tokens: &[String], pos: usize) -> Result<(RuleNode, usize), S
         if pos >= tokens.len() || tokens[pos] != ")" {
             return Err("Expected `)` to close call".to_string());
         }
-        return Ok((RuleNode::Call { name: name.clone(), args }, pos + 1));
+        return Ok((
+            RuleNode::Call {
+                name: name.clone(),
+                args,
+            },
+            pos + 1,
+        ));
     }
 
     // Compact call: `name(arg, arg, …)`.
@@ -1224,9 +1261,13 @@ fn collect_rule_args(
         pos = new_pos;
         let arg = match node {
             RuleNode::Lit(a) => a,
-            RuleNode::Call { name, args: sub_args } => {
-                RuleArg::Call(RuleCall { name, args: sub_args })
-            }
+            RuleNode::Call {
+                name,
+                args: sub_args,
+            } => RuleArg::Call(RuleCall {
+                name,
+                args: sub_args,
+            }),
         };
         args.push(arg);
     }
@@ -1263,7 +1304,9 @@ fn is_rule_ident(s: &str) -> bool {
 
 fn to_rule_expression(action: &str, args: &[RuleArg]) -> Result<RuleExpression, String> {
     if action != "deny" && action != "warn" {
-        return Err(format!("Invalid rule action: `{action}`. Must be `deny` or `warn`."));
+        return Err(format!(
+            "Invalid rule action: `{action}`. Must be `deny` or `warn`."
+        ));
     }
     if args.is_empty() {
         return Err("Rule expression must have at least one function or argument".to_string());
@@ -1279,7 +1322,9 @@ fn to_rule_expression(action: &str, args: &[RuleArg]) -> Result<RuleExpression, 
             function: name.clone(),
             args: args[1..].to_vec(),
         }),
-        first => Err(format!("Invalid rule function or first argument: `{first:?}`")),
+        first => Err(format!(
+            "Invalid rule function or first argument: `{first:?}`"
+        )),
     }
 }
 
@@ -1361,7 +1406,10 @@ mod tests {
 
     #[test]
     fn test_policy_document_size() {
-        let policy = Policy { max_document_size: 10, ..Policy::default() };
+        let policy = Policy {
+            max_document_size: 10,
+            ..Policy::default()
+        };
         let err = parse_text_with_policy("@sdif 1.0\nkey value\n", &policy).unwrap_err();
         assert_eq!(err.code, "SDIF_POLICY_DOCUMENT_SIZE");
     }

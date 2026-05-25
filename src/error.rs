@@ -16,7 +16,12 @@ pub struct ParseError {
 
 impl ParseError {
     pub fn new(code: impl Into<String>, message: impl Into<String>, span: Span) -> Self {
-        Self { code: code.into(), message: message.into(), span, hint: None }
+        Self {
+            code: code.into(),
+            message: message.into(),
+            span,
+            hint: None,
+        }
     }
 
     pub fn with_hint(mut self, hint: impl Into<String>) -> Self {
@@ -31,11 +36,7 @@ impl ParseError {
     }
 
     /// Create a `ParseError` for a policy violation at a known line.
-    pub fn policy_at(
-        code: impl Into<String>,
-        message: impl Into<String>,
-        line: u32,
-    ) -> Self {
+    pub fn policy_at(code: impl Into<String>, message: impl Into<String>, line: u32) -> Self {
         Self::new(code, message, Span::single_line(line, 1, 1))
     }
 }
@@ -64,7 +65,10 @@ pub struct PolicyError {
 
 impl PolicyError {
     pub fn new(code: impl Into<String>, message: impl Into<String>) -> Self {
-        Self { code: code.into(), message: message.into() }
+        Self {
+            code: code.into(),
+            message: message.into(),
+        }
     }
 }
 

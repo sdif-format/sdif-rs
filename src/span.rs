@@ -15,11 +15,21 @@ pub struct Span {
 impl Span {
     /// Create a span from explicit start and end positions.
     pub fn new(start_line: u32, start_col: u32, end_line: u32, end_col: u32) -> Self {
-        Self { start_line, start_col, end_line, end_col }
+        Self {
+            start_line,
+            start_col,
+            end_line,
+            end_col,
+        }
     }
 
     /// Convenience constructor for a span that sits on a single line.
     pub fn single_line(line: u32, start_col: u32, end_col: u32) -> Self {
-        Self { start_line: line, start_col, end_line: line, end_col }
+        Self {
+            start_line: line,
+            start_col,
+            end_line: line,
+            end_col,
+        }
     }
 }

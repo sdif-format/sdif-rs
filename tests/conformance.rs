@@ -84,7 +84,8 @@ fn invalid_alias_collision() {
     let err = result.unwrap_err();
     assert_eq!(
         err.code, "SDIF_POLICY_ALIAS_COLLISION",
-        "Wrong error code. Got: {:?}", err
+        "Wrong error code. Got: {:?}",
+        err
     );
 }
 
@@ -96,7 +97,8 @@ fn invalid_alias_reserved() {
     let err = result.unwrap_err();
     assert_eq!(
         err.code, "SDIF_POLICY_ALIAS_RESERVED",
-        "Wrong error code. Got: {:?}", err
+        "Wrong error code. Got: {:?}",
+        err
     );
 }
 
@@ -108,7 +110,8 @@ fn invalid_directive_unknown() {
     let err = result.unwrap_err();
     assert_eq!(
         err.code, "SDIF_DIRECTIVE_UNKNOWN",
-        "Wrong error code. Got: {:?}", err
+        "Wrong error code. Got: {:?}",
+        err
     );
 }
 
@@ -120,7 +123,8 @@ fn invalid_narrative_bad_close() {
     let err = result.unwrap_err();
     assert_eq!(
         err.code, "SDIF_NARRATIVE_CLOSE_ALIGN",
-        "Wrong error code. Got: {:?}", err
+        "Wrong error code. Got: {:?}",
+        err
     );
 }
 
@@ -132,7 +136,8 @@ fn invalid_policy_nesting_depth() {
     let err = result.unwrap_err();
     assert_eq!(
         err.code, "SDIF_POLICY_NESTING_DEPTH",
-        "Wrong error code. Got: {:?}", err
+        "Wrong error code. Got: {:?}",
+        err
     );
 }
 
@@ -144,7 +149,8 @@ fn invalid_source_grouped_relation() {
     let err = result.unwrap_err();
     assert_eq!(
         err.code, "SDIF_AI_REL_SUBJECT",
-        "Wrong error code. Got: {:?}", err
+        "Wrong error code. Got: {:?}",
+        err
     );
 }
 
@@ -156,7 +162,8 @@ fn invalid_table_row_comment() {
     let err = result.unwrap_err();
     assert_eq!(
         err.code, "SDIF_TABLE_ROW_COMMENT",
-        "Wrong error code. Got: {:?}", err
+        "Wrong error code. Got: {:?}",
+        err
     );
 }
 
@@ -168,7 +175,8 @@ fn invalid_table_too_few_cells() {
     let err = result.unwrap_err();
     assert_eq!(
         err.code, "SDIF_TABLE_ARITY",
-        "Wrong error code. Got: {:?}", err
+        "Wrong error code. Got: {:?}",
+        err
     );
 }
 
@@ -180,7 +188,8 @@ fn invalid_table_too_many_cells() {
     let err = result.unwrap_err();
     assert_eq!(
         err.code, "SDIF_TABLE_ARITY",
-        "Wrong error code. Got: {:?}", err
+        "Wrong error code. Got: {:?}",
+        err
     );
 }
 
@@ -192,7 +201,8 @@ fn invalid_version_bad_token() {
     let err = result.unwrap_err();
     assert_eq!(
         err.code, "SDIF_VERSION_UNSUPPORTED",
-        "Wrong error code. Got: {:?}", err
+        "Wrong error code. Got: {:?}",
+        err
     );
 }
 
@@ -204,7 +214,8 @@ fn invalid_version_missing() {
     let err = result.unwrap_err();
     assert_eq!(
         err.code, "SDIF_VERSION_MISSING",
-        "Wrong error code. Got: {:?}", err
+        "Wrong error code. Got: {:?}",
+        err
     );
 }
 
@@ -216,7 +227,8 @@ fn invalid_version_unsupported() {
     let err = result.unwrap_err();
     assert_eq!(
         err.code, "SDIF_VERSION_UNSUPPORTED",
-        "Wrong error code. Got: {:?}", err
+        "Wrong error code. Got: {:?}",
+        err
     );
 }
 
@@ -228,7 +240,8 @@ fn invalid_scalar_unclosed_quote() {
     let err = result.unwrap_err();
     assert_eq!(
         err.code, "SDIF_STRING_UNCLOSED",
-        "Wrong error code. Got: {:?}", err
+        "Wrong error code. Got: {:?}",
+        err
     );
 }
 
@@ -240,6 +253,155 @@ fn invalid_scalar_trailing_after_quote() {
     let err = result.unwrap_err();
     assert_eq!(
         err.code, "SDIF_STRING_TRAILING",
-        "Wrong error code. Got: {:?}", err
+        "Wrong error code. Got: {:?}",
+        err
+    );
+}
+
+#[test]
+fn invalid_directive_empty() {
+    let text = read_fixture("conformance/invalid/directive_empty.sdif");
+    let result = parse_text(&text);
+    assert!(result.is_err(), "Expected Err, got Ok");
+    let err = result.unwrap_err();
+    assert_eq!(
+        err.code, "SDIF_DIRECTIVE",
+        "Wrong error code. Got: {:?}",
+        err
+    );
+}
+
+#[test]
+fn invalid_field_no_value() {
+    let text = read_fixture("conformance/invalid/field_no_value.sdif");
+    let result = parse_text(&text);
+    assert!(result.is_err(), "Expected Err, got Ok");
+    let err = result.unwrap_err();
+    assert_eq!(err.code, "SDIF_FIELD", "Wrong error code. Got: {:?}", err);
+}
+
+#[test]
+fn invalid_indent_tab() {
+    let text = read_fixture("conformance/invalid/indent_tab.sdif");
+    let result = parse_text(&text);
+    assert!(result.is_err(), "Expected Err, got Ok");
+    let err = result.unwrap_err();
+    assert_eq!(
+        err.code, "SDIF_INDENT_TAB",
+        "Wrong error code. Got: {:?}",
+        err
+    );
+}
+
+#[test]
+fn invalid_indent_unexpected() {
+    let text = read_fixture("conformance/invalid/indent_unexpected.sdif");
+    let result = parse_text(&text);
+    assert!(result.is_err(), "Expected Err, got Ok");
+    let err = result.unwrap_err();
+    assert_eq!(err.code, "SDIF_INDENT", "Wrong error code. Got: {:?}", err);
+}
+
+#[test]
+fn invalid_narrative_unclosed() {
+    let text = read_fixture("conformance/invalid/narrative_unclosed.sdif");
+    let result = parse_text(&text);
+    assert!(result.is_err(), "Expected Err, got Ok");
+    let err = result.unwrap_err();
+    assert_eq!(
+        err.code, "SDIF_NARRATIVE_UNCLOSED",
+        "Wrong error code. Got: {:?}",
+        err
+    );
+}
+
+#[test]
+fn invalid_object_directive() {
+    let text = read_fixture("conformance/invalid/object_directive.sdif");
+    let result = parse_text(&text);
+    assert!(result.is_err(), "Expected Err, got Ok");
+    let err = result.unwrap_err();
+    assert_eq!(
+        err.code, "SDIF_OBJECT_DIRECTIVE",
+        "Wrong error code. Got: {:?}",
+        err
+    );
+}
+
+#[test]
+fn invalid_relation_arity() {
+    let text = read_fixture("conformance/invalid/relation_arity.sdif");
+    let result = parse_text(&text);
+    assert!(result.is_err(), "Expected Err, got Ok");
+    let err = result.unwrap_err();
+    assert_eq!(
+        err.code, "SDIF_REL_ARITY",
+        "Wrong error code. Got: {:?}",
+        err
+    );
+}
+
+#[test]
+fn invalid_relation_quote() {
+    let text = read_fixture("conformance/invalid/relation_quote.sdif");
+    let result = parse_text(&text);
+    assert!(result.is_err(), "Expected Err, got Ok");
+    let err = result.unwrap_err();
+    assert_eq!(
+        err.code, "SDIF_REL_QUOTE",
+        "Wrong error code. Got: {:?}",
+        err
+    );
+}
+
+#[test]
+fn invalid_rule_expr() {
+    let text = read_fixture("conformance/invalid/rule_expr.sdif");
+    let result = parse_text(&text);
+    assert!(result.is_err(), "Expected Err, got Ok");
+    let err = result.unwrap_err();
+    assert_eq!(
+        err.code, "SDIF_RULE_EXPR",
+        "Wrong error code. Got: {:?}",
+        err
+    );
+}
+
+#[test]
+fn invalid_table_header_empty() {
+    let text = read_fixture("conformance/invalid/table_header_empty.sdif");
+    let result = parse_text(&text);
+    assert!(result.is_err(), "Expected Err, got Ok");
+    let err = result.unwrap_err();
+    assert_eq!(
+        err.code, "SDIF_TABLE_HEADER",
+        "Wrong error code. Got: {:?}",
+        err
+    );
+}
+
+#[test]
+fn invalid_version_conflict() {
+    let text = read_fixture("conformance/invalid/version_conflict.sdif");
+    let result = parse_text(&text);
+    assert!(result.is_err(), "Expected Err, got Ok");
+    let err = result.unwrap_err();
+    assert_eq!(
+        err.code, "SDIF_VERSION_CONFLICT",
+        "Wrong error code. Got: {:?}",
+        err
+    );
+}
+
+#[test]
+fn invalid_version_syntax() {
+    let text = read_fixture("conformance/invalid/version_syntax.sdif");
+    let result = parse_text(&text);
+    assert!(result.is_err(), "Expected Err, got Ok");
+    let err = result.unwrap_err();
+    assert_eq!(
+        err.code, "SDIF_VERSION_SYNTAX",
+        "Wrong error code. Got: {:?}",
+        err
     );
 }
