@@ -480,11 +480,13 @@ impl<'a> Parser<'a> {
 
             let mut unquoted_cells: Vec<String> = Vec::with_capacity(cells.len());
             for (i, cell) in cells.iter().enumerate() {
-                self.check_string_length(cell, "Table cell")?;
                 if is_quoted(cell) {
                     quoted_cols.insert(i);
-                    unquoted_cells.push(unquote(cell).to_string());
+                    let val = unquote(cell).to_string();
+                    self.check_string_length(&val, "Table cell")?;
+                    unquoted_cells.push(val);
                 } else {
+                    self.check_string_length(cell, "Table cell")?;
                     unquoted_cells.push(cell.clone());
                 }
             }
@@ -1362,46 +1364,47 @@ fn parse_file_inner(
         ));
     }
 
+    // Push before processing; pop in all exit paths via the inner closure.
     seen.push(abs.clone());
-    let doc = parse_text_with_policy(&content, policy)?;
+    let result = (|| -> Result<Document, ParseError> {
+        let doc = parse_text_with_policy(&content, policy)?;
 
-    let mut merged_directives: Vec<Directive> = Vec::new();
-    let mut merged_statements: Vec<Statement> = Vec::new();
+        let mut merged_directives: Vec<Directive> = Vec::new();
+        let mut merged_statements: Vec<Statement> = Vec::new();
 
-    for directive in doc.directives {
-        if directive.name == "include" {
-            // Gate: includes must be explicitly enabled.
-            if !policy.allow_includes {
-                seen.pop();
-                return Err(ParseError::new(
-                    "SDIF_POLICY_INCLUDE",
-                    "Includes are disabled by policy",
-                    Span::single_line(1, 1, 1),
-                ));
-            }
-            let target = resolve_include_path(&directive.args, &abs, policy)?;
-            let included = parse_file_inner(&target, policy, seen, expanded_bytes)?;
-            // Merge: statements from included doc come first, then parent
-            // statements will follow. Non-version directives are inlined.
-            merged_statements.extend(included.statements);
-            for d in included.directives {
-                if !matches!(d.name.as_str(), "include" | "sdif" | "sdif.ai") {
-                    merged_directives.push(d);
+        for directive in doc.directives {
+            if directive.name == "include" {
+                // Gate: includes must be explicitly enabled.
+                if !policy.allow_includes {
+                    return Err(ParseError::new(
+                        "SDIF_POLICY_INCLUDE",
+                        "Includes are disabled by policy",
+                        Span::single_line(1, 1, 1),
+                    ));
                 }
+                let target = resolve_include_path(&directive.args, &abs, policy)?;
+                let included = parse_file_inner(&target, policy, seen, expanded_bytes)?;
+                // Merge: included statements come first; non-version directives inlined.
+                merged_statements.extend(included.statements);
+                for d in included.directives {
+                    if !matches!(d.name.as_str(), "include" | "sdif" | "sdif.ai") {
+                        merged_directives.push(d);
+                    }
+                }
+            } else {
+                merged_directives.push(directive);
             }
-        } else {
-            merged_directives.push(directive);
         }
-    }
 
+        // Parent's own statements follow included content.
+        merged_statements.extend(doc.statements);
+        Ok(Document {
+            directives: merged_directives,
+            statements: merged_statements,
+        })
+    })();
     seen.pop();
-    // Parent's own statements follow included content.
-    merged_statements.extend(doc.statements);
-
-    Ok(Document {
-        directives: merged_directives,
-        statements: merged_statements,
-    })
+    result
 }
 
 /// Resolve an `@include` path argument to an absolute `PathBuf`, checking the
@@ -1421,10 +1424,11 @@ fn resolve_include_path(
     // Strip surrounding double-quotes if present.
     let target_str = raw.trim_matches('"');
 
-    // Remote URL check — always rejected; remote includes are not supported.
-    if target_str.starts_with("http://")
-        || target_str.starts_with("https://")
-        || target_str.starts_with("ftp://")
+    // Remote URL check — rejected unless policy explicitly permits.
+    if !policy.allow_remote_includes
+        && (target_str.starts_with("http://")
+            || target_str.starts_with("https://")
+            || target_str.starts_with("ftp://"))
     {
         return Err(ParseError::new(
             "SDIF_POLICY_REMOTE_INCLUDE",
