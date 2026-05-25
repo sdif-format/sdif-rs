@@ -3,6 +3,9 @@
 //! `Policy` mirrors the Python `sdif.core.policy.Policy` dataclass exactly,
 //! including all default values. Create an instance with `Policy::default()`.
 
+use std::collections::HashSet;
+use std::path::PathBuf;
+
 /// Identifiers that may not be used as user-defined alias names or targets.
 pub const RESERVED_TERMS: &[&str] = &["include", "alias"];
 
@@ -14,6 +17,10 @@ pub const RESERVED_TERMS: &[&str] = &["include", "alias"];
 pub struct Policy {
     /// Allow `@include` directives.
     pub allow_includes: bool,
+    /// Allowlist of filesystem paths from which `@include` directives may load
+    /// files. An empty set means no path restriction beyond `allow_includes`.
+    /// Mirrors `allowed_include_paths: frozenset[Path]` in the Python Policy.
+    pub allowed_include_paths: HashSet<PathBuf>,
     /// Allow `@include` directives that reference remote URLs.
     pub allow_remote_includes: bool,
     /// Allow `@schema` directives that reference remote URLs.
@@ -38,6 +45,7 @@ impl Default for Policy {
     fn default() -> Self {
         Self {
             allow_includes: false,
+            allowed_include_paths: HashSet::new(),
             allow_remote_includes: false,
             allow_remote_schemas: false,
             max_document_size: 1_000_000,
