@@ -60,6 +60,9 @@ pub struct Table {
     pub name: String,
     pub columns: Vec<String>,
     pub rows: Vec<Vec<String>>,
+    /// Indices (0-based) of columns whose cell values must be quoted in
+    /// canonical form. Populated by Task 7; always empty after initial parse.
+    pub quoted_columns: Vec<usize>,
 }
 
 // ---------------------------------------------------------------------------

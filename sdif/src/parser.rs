@@ -501,6 +501,7 @@ impl<'a> Parser<'a> {
             name: name.to_string(),
             columns,
             rows,
+            quoted_columns: Vec::new(),
         })
     }
 

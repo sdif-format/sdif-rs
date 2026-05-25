@@ -405,3 +405,16 @@ fn invalid_version_syntax() {
         err
     );
 }
+
+// ---------------------------------------------------------------------------
+// Table.quoted_columns field
+// ---------------------------------------------------------------------------
+
+#[test]
+fn table_quoted_columns_is_empty_for_plain_headers() {
+    use sdif::Statement;
+    let src = "@sdif 1.0\npeople[name,age]:\n  alice\t30\n";
+    let doc = sdif::parser::parse_text(src).unwrap();
+    let Statement::Table(t) = &doc.statements[0] else { panic!("expected Table") };
+    assert_eq!(t.quoted_columns, Vec::<usize>::new());
+}
