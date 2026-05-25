@@ -418,3 +418,40 @@ fn table_quoted_columns_is_empty_for_plain_headers() {
     let Statement::Table(t) = &doc.statements[0] else { panic!("expected Table") };
     assert_eq!(t.quoted_columns, Vec::<usize>::new());
 }
+
+// ---------------------------------------------------------------------------
+// Accessor iterator methods
+// ---------------------------------------------------------------------------
+
+#[test]
+fn document_fields_accessor_returns_fields() {
+    let src = "@sdif 1.0\nkind Agent\nid foo\n";
+    let doc = sdif::parser::parse_text(src).unwrap();
+    let keys: Vec<&str> = doc.fields().map(|f| f.key.as_str()).collect();
+    assert_eq!(keys, ["kind", "id"]);
+}
+
+#[test]
+fn document_tables_accessor_returns_tables() {
+    let src = "@sdif 1.0\nitems[id,val]:\n  a\t1\n";
+    let doc = sdif::parser::parse_text(src).unwrap();
+    let names: Vec<&str> = doc.tables().map(|t| t.name.as_str()).collect();
+    assert_eq!(names, ["items"]);
+}
+
+#[test]
+fn object_block_fields_accessor() {
+    use sdif::Statement;
+    let src = "@sdif 1.0\ncontact:\n  name Alice\n  email a@b.com\n";
+    let doc = sdif::parser::parse_text(src).unwrap();
+    let Statement::ObjectBlock(obj) = &doc.statements[0] else { panic!("expected ObjectBlock") };
+    let keys: Vec<&str> = obj.fields().map(|f| f.key.as_str()).collect();
+    assert_eq!(keys, ["name", "email"]);
+}
+
+#[test]
+fn policy_allowed_include_paths_defaults_empty() {
+    use sdif::Policy;
+    let p = Policy::default();
+    assert!(p.allowed_include_paths.is_empty());
+}

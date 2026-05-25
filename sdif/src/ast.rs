@@ -148,3 +148,85 @@ pub enum Statement {
     Rule(Rule),
     Narrative(Narrative),
 }
+
+// ---------------------------------------------------------------------------
+// Accessor iterators — mirror Python sdif-py .fields, .tables, etc. properties
+// ---------------------------------------------------------------------------
+
+impl Document {
+    pub fn fields(&self) -> impl Iterator<Item = &Field> {
+        self.statements.iter().filter_map(|s| match s {
+            Statement::Field(f) => Some(f),
+            _ => None,
+        })
+    }
+    pub fn objects(&self) -> impl Iterator<Item = &ObjectBlock> {
+        self.statements.iter().filter_map(|s| match s {
+            Statement::ObjectBlock(o) => Some(o),
+            _ => None,
+        })
+    }
+    pub fn tables(&self) -> impl Iterator<Item = &Table> {
+        self.statements.iter().filter_map(|s| match s {
+            Statement::Table(t) => Some(t),
+            _ => None,
+        })
+    }
+    pub fn relations(&self) -> impl Iterator<Item = &Relation> {
+        self.statements.iter().filter_map(|s| match s {
+            Statement::Relation(r) => Some(r),
+            _ => None,
+        })
+    }
+    pub fn rules(&self) -> impl Iterator<Item = &Rule> {
+        self.statements.iter().filter_map(|s| match s {
+            Statement::Rule(r) => Some(r),
+            _ => None,
+        })
+    }
+    pub fn narratives(&self) -> impl Iterator<Item = &Narrative> {
+        self.statements.iter().filter_map(|s| match s {
+            Statement::Narrative(n) => Some(n),
+            _ => None,
+        })
+    }
+}
+
+impl ObjectBlock {
+    pub fn fields(&self) -> impl Iterator<Item = &Field> {
+        self.statements.iter().filter_map(|s| match s {
+            Statement::Field(f) => Some(f),
+            _ => None,
+        })
+    }
+    pub fn objects(&self) -> impl Iterator<Item = &ObjectBlock> {
+        self.statements.iter().filter_map(|s| match s {
+            Statement::ObjectBlock(o) => Some(o),
+            _ => None,
+        })
+    }
+    pub fn tables(&self) -> impl Iterator<Item = &Table> {
+        self.statements.iter().filter_map(|s| match s {
+            Statement::Table(t) => Some(t),
+            _ => None,
+        })
+    }
+    pub fn relations(&self) -> impl Iterator<Item = &Relation> {
+        self.statements.iter().filter_map(|s| match s {
+            Statement::Relation(r) => Some(r),
+            _ => None,
+        })
+    }
+    pub fn rules(&self) -> impl Iterator<Item = &Rule> {
+        self.statements.iter().filter_map(|s| match s {
+            Statement::Rule(r) => Some(r),
+            _ => None,
+        })
+    }
+    pub fn narratives(&self) -> impl Iterator<Item = &Narrative> {
+        self.statements.iter().filter_map(|s| match s {
+            Statement::Narrative(n) => Some(n),
+            _ => None,
+        })
+    }
+}
