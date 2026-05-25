@@ -1,0 +1,6 @@
+[package]
+name = "sdif"
+version = "0.1.0"
+edition = "2021"
+description = "SDIF format library — Rust implementation"
+license = "Apache-2.0"

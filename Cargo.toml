@@ -1,6 +1,3 @@
-[package]
-name = "sdif-rs"
-version = "0.1.0"
-edition = "2021"
-description = "SDIF format parser — Rust implementation"
-license = "Apache-2.0"
+[workspace]
+members = ["sdif"]
+resolver = "2"
