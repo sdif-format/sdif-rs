@@ -287,11 +287,9 @@ impl<'a> Parser<'a> {
             self.is_ai_profile = true;
         }
 
-        let span = Span::single_line(line_no, indent + 1, indent + 1 + body.len() as u32);
         Ok(Directive {
             name: name.to_string(),
             args,
-            span,
         })
     }
 
@@ -335,7 +333,6 @@ impl<'a> Parser<'a> {
         Ok(Directive {
             name: "alias".to_string(),
             args: entries.to_vec(),
-            span: Span::single_line(line_no, 1, 1),
         })
     }
 
@@ -366,8 +363,6 @@ impl<'a> Parser<'a> {
         let child_indent = indent + 2;
         let mut statements: Vec<Statement> = Vec::new();
 
-        let start_line = line_no;
-
         loop {
             if self.index >= self.lines.len() {
                 break;
@@ -397,15 +392,9 @@ impl<'a> Parser<'a> {
         }
 
         self.current_nesting_depth -= 1;
-        let end_line = if self.index > 0 {
-            self.index as u32
-        } else {
-            start_line
-        };
         Ok(ObjectBlock {
             key: key.to_string(),
             statements,
-            span: Span::new(start_line, indent + 1, end_line, indent + 1),
         })
     }
 
@@ -433,12 +422,6 @@ impl<'a> Parser<'a> {
                 Span::single_line(line_no, indent + 1, indent + 1),
             ));
         }
-
-        let header_span = Span::single_line(
-            line_no,
-            indent + 1,
-            indent + 1 + self.lines[self.index - 1].len() as u32,
-        );
 
         self.index += 1;
         let child_indent = indent + 2;
@@ -514,17 +497,10 @@ impl<'a> Parser<'a> {
             self.index += 1;
         }
 
-        let end_line = if self.index > 0 {
-            self.index as u32
-        } else {
-            line_no
-        };
         Ok(Table {
             name: name.to_string(),
             columns,
             rows,
-            span: Span::new(line_no, indent + 1, end_line, indent + 1),
-            header_span,
         })
     }
 
@@ -576,11 +552,6 @@ impl<'a> Parser<'a> {
                 predicate: parts[1].clone(),
                 object: unquoted_obj,
                 object_quoted,
-                span: Span::single_line(
-                    row_no,
-                    child_indent + 1,
-                    child_indent + 1 + raw.len() as u32,
-                ),
             });
             self.index += 1;
         }
@@ -636,11 +607,6 @@ impl<'a> Parser<'a> {
                 predicate: parts[0].clone(),
                 object: unquoted_obj,
                 object_quoted,
-                span: Span::single_line(
-                    row_no,
-                    child_indent + 1,
-                    child_indent + 1 + raw.len() as u32,
-                ),
             });
             self.index += 1;
         }
@@ -680,16 +646,10 @@ impl<'a> Parser<'a> {
             let source = strip_inline_comment(&raw[child_indent as usize..])
                 .trim()
                 .to_string();
-            let span = Span::single_line(
-                row_no,
-                child_indent + 1,
-                child_indent + 1 + source.len() as u32,
-            );
             let expression = tokenize_and_parse_rule(&source, row_no)?;
             rules.push(Rule {
                 source,
                 expression: Some(expression),
-                span,
             });
             self.index += 1;
         }
@@ -739,11 +699,9 @@ impl<'a> Parser<'a> {
                 self.index += 1;
                 let content_str = content.join("\n");
                 self.check_string_length(&content_str, "Narrative content")?;
-                let end_line = (self.index) as u32;
                 return Ok(Narrative {
                     key: key.to_string(),
                     text: content_str,
-                    span: Span::new(line_no, indent + 1, end_line, indent + 1),
                 });
             }
             let line_content = if raw.starts_with(&prefix) {
@@ -821,28 +779,10 @@ fn parse_field(
 
     let quoted = is_quoted(&raw_value);
 
-    // Span of the key token in the original line.
-    let key_start_col = indent + 1;
-    let key_end_col = key_start_col + key.len() as u32;
-
-    // Span of the value token in the original line.
-    // Find where the value starts in the clean body.
-    let value_offset_in_clean = sep + (clean[sep..].len() - clean[sep..].trim_start().len());
-    let value_start_col = indent + 1 + value_offset_in_clean as u32;
-    let value_content_start = if quoted {
-        value_start_col + 1
-    } else {
-        value_start_col
-    };
-    let value_content_end = value_content_start + unquoted.len() as u32;
-
     Ok(Field {
         key: key.to_string(),
         value: unquoted,
         quoted,
-        span: Span::single_line(line_no, indent + 1, indent + 1 + body.len() as u32),
-        key_span: Span::single_line(line_no, key_start_col, key_end_col),
-        value_span: Span::single_line(line_no, value_content_start, value_content_end),
     })
 }
 

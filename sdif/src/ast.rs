@@ -1,10 +1,8 @@
 //! AST nodes for the SDIF v1 parser.
 //!
-//! Every node carries a `span` recording its source location. Field and Table
-//! additionally expose sub-spans for their constituent parts so that tooling
-//! (e.g. an LSP) can highlight individual components.
-
-use crate::span::Span;
+//! Spans are tracked on `ParseError` (for diagnostics) but not on individual
+//! AST nodes — mirroring the Python reference implementation which has no
+//! span fields on its AST types.
 
 // ---------------------------------------------------------------------------
 // Top-level document
@@ -26,7 +24,6 @@ pub struct Document {
 pub struct Directive {
     pub name: String,
     pub args: Vec<String>,
-    pub span: Span,
 }
 
 // ---------------------------------------------------------------------------
@@ -40,12 +37,6 @@ pub struct Field {
     pub value: String,
     /// True when the value was written in double-quotes.
     pub quoted: bool,
-    /// Span of the entire `key: value` line.
-    pub span: Span,
-    /// Span of just the key token.
-    pub key_span: Span,
-    /// Span of just the value token (excluding surrounding quotes if any).
-    pub value_span: Span,
 }
 
 // ---------------------------------------------------------------------------
@@ -57,7 +48,6 @@ pub struct Field {
 pub struct ObjectBlock {
     pub key: String,
     pub statements: Vec<Statement>,
-    pub span: Span,
 }
 
 // ---------------------------------------------------------------------------
@@ -70,10 +60,6 @@ pub struct Table {
     pub name: String,
     pub columns: Vec<String>,
     pub rows: Vec<Vec<String>>,
-    /// Span of the complete table (header + all rows).
-    pub span: Span,
-    /// Span of the header line only.
-    pub header_span: Span,
 }
 
 // ---------------------------------------------------------------------------
@@ -88,7 +74,6 @@ pub struct Relation {
     pub object: String,
     /// True when the object value was written in double-quotes.
     pub object_quoted: bool,
-    pub span: Span,
 }
 
 // ---------------------------------------------------------------------------
@@ -100,7 +85,6 @@ pub struct Relation {
 pub struct Narrative {
     pub key: String,
     pub text: String,
-    pub span: Span,
 }
 
 // ---------------------------------------------------------------------------
@@ -113,7 +97,6 @@ pub struct Narrative {
 pub struct Rule {
     pub source: String,
     pub expression: Option<RuleExpression>,
-    pub span: Span,
 }
 
 // ---------------------------------------------------------------------------
