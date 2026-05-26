@@ -288,7 +288,6 @@ impl<'a> Parser<'a> {
         }
 
         Ok(Directive {
-            span: Span::single_line(line_no, indent + 1, indent + 1 + name.len() as u32),
             name: name.to_string(),
             args,
         })
@@ -332,7 +331,6 @@ impl<'a> Parser<'a> {
                 .insert(alias_name.to_string(), canonical_name.to_string());
         }
         Ok(Directive {
-            span: Span::single_line(line_no, 1, 1 + "alias".len() as u32),
             name: "alias".to_string(),
             args: entries.to_vec(),
         })
@@ -395,7 +393,6 @@ impl<'a> Parser<'a> {
 
         self.current_nesting_depth -= 1;
         Ok(ObjectBlock {
-            span: Span::single_line(line_no, indent + 1, indent + 1 + key.len() as u32),
             key: key.to_string(),
             statements,
         })
@@ -512,7 +509,6 @@ impl<'a> Parser<'a> {
 
         let quoted_columns: Vec<usize> = quoted_cols.into_iter().collect();
         Ok(Table {
-            span: Span::single_line(line_no, indent + 1, indent + 1 + name.len() as u32),
             name: name.to_string(),
             columns,
             rows,
@@ -564,7 +560,6 @@ impl<'a> Parser<'a> {
             self.check_string_length(&unquoted_obj, "Relation object")?;
             let object_quoted = is_quoted(&parts[2]);
             relations.push(Relation {
-                span: Span::single_line(row_no, child_indent + 1, child_indent + 1 + parts[0].len() as u32),
                 subject: parts[0].clone(),
                 predicate: parts[1].clone(),
                 object: unquoted_obj,
@@ -620,7 +615,6 @@ impl<'a> Parser<'a> {
             self.check_string_length(&unquoted_obj, "Relation object")?;
             let object_quoted = is_quoted(&parts[1]);
             relations.push(Relation {
-                span: Span::single_line(row_no, child_indent + 1, child_indent + 1 + subject.len() as u32),
                 subject: subject.to_string(),
                 predicate: parts[0].clone(),
                 object: unquoted_obj,
@@ -666,7 +660,6 @@ impl<'a> Parser<'a> {
                 .to_string();
             let expression = tokenize_and_parse_rule(&source, row_no)?;
             rules.push(Rule {
-                span: Span::single_line(row_no, child_indent + 1, child_indent + 1 + source.len() as u32),
                 source,
                 expression: Some(expression),
             });
@@ -719,7 +712,6 @@ impl<'a> Parser<'a> {
                 let content_str = content.join("\n");
                 self.check_string_length(&content_str, "Narrative content")?;
                 return Ok(Narrative {
-                    span: Span::single_line(line_no, indent + 1, indent + 1 + key.len() as u32),
                     key: key.to_string(),
                     text: content_str,
                 });
@@ -800,7 +792,6 @@ fn parse_field(
     let quoted = is_quoted(&raw_value);
 
     Ok(Field {
-        span: Span::single_line(line_no, indent + 1, indent + 1 + key.len() as u32),
         key: key.to_string(),
         value: unquoted,
         quoted,
