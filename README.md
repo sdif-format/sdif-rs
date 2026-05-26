@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/sdif-format/.github/main/profile/assets/sdif-logo-t.png" alt="SDIF Rust" width="320">
+  <img src="https://raw.githubusercontent.com/sdif-format/.github/main/profile/assets/sdif-logo-t.png" alt="SDIF Rust" width="520">
 </p>
 
 <p align="center">
@@ -12,13 +12,13 @@
 </p>
 
 <p align="center">
-  <a href="#what-is-sdif-rs">What is sdif-rs?</a>
+  <a href="#what-is-sdif">What is SDIF?</a>
   ·
   <a href="#public-api">Public API</a>
   ·
-  <a href="#development">Development</a>
+  <a href="#format-at-a-glance">Format at a glance</a>
   ·
-  <a href="#conformance">Conformance</a>
+  <a href="#token-efficiency">Token efficiency</a>
   ·
   <a href="#ecosystem">Ecosystem</a>
 </p>
@@ -68,11 +68,162 @@
 
 ---
 
-## What is sdif-rs?
+## What is SDIF?
 
-`sdif-rs` reimplements the Semantic Data Interchange Format parser in Rust. It generates a span-annotated AST designed to power LSP (Language Server Protocol) features, editor integration, and IDE highlighting.
+**SDIF — Semantic Data Interchange Format** is a compact, canonicalizable and AI-friendly data format for structured information that needs to move cleanly between humans, tools, agents and deterministic workflows.
 
-It does not have runtime dependencies, keeping compilation fast and binaries minimal.
+It is designed for cases where data should be:
+
+- small enough to be efficient in AI context windows;
+- structured enough for machines to parse and validate;
+- readable enough for humans to review;
+- deterministic enough for hashing, signing and reproducible workflows;
+- semantic enough to express tables, relations, metadata and intent.
+
+SDIF also includes an AI projection surface, `.sdif.ai`, designed for token-dense agent exchange while remaining reversible back into canonical SDIF when the projection contract is respected.
+
+<br>
+
+```sdif
+@sdif 1.0
+
+kind Plan
+id release.v1
+title "Release readiness plan"
+
+items[id,status,owner,evidence]:
+  R1 done build "reports/build.md"
+  R2 open qa "reports/tests.md"
+  R3 done security "reports/audit.md"
+
+rel:
+  release.v1 validated_by R1
+  release.v1 blocked_by R2
+  release.v1 governed_by R3
+```
+
+<br>
+
+<p align="center">
+  <strong>
+    Structured information closer to a document,<br>
+    while still behaving like a contract.
+  </strong>
+</p>
+
+<br>
+
+---
+
+## Format at a glance
+
+JSON repeats field names across every record:
+
+```json
+[
+  { "id": "R1", "status": "done",    "owner": "build",    "evidence": "reports/build.md"  },
+  { "id": "R2", "status": "open",    "owner": "qa",       "evidence": "reports/tests.md"  },
+  { "id": "R3", "status": "done",    "owner": "security", "evidence": "reports/audit.md"  }
+]
+```
+
+SDIF declares the shape once and uses literal tabs between cells. Editors must preserve tabs — this is a deliberate tradeoff for compactness:
+
+```sdif
+@sdif 1.0
+
+kind Plan
+id   release.v1
+title "Release readiness plan"
+
+items[id,status,owner,evidence]:
+  R1	done	build	reports/build.md
+  R2	open	qa	reports/tests.md
+  R3	done	security	reports/audit.md
+
+rel:
+  release.v1  validated_by  R1
+  release.v1  blocked_by    R2
+  release.v1  governed_by   R3
+```
+
+Semantic relationships are first-class, not embedded strings.
+
+<br>
+
+---
+
+## Token efficiency
+
+The benchmark derives every compared format from the same canonical JSON source in `examples/golden/`. Results below are from the most recent run across 21 documents and 3 tokenizers.
+
+<div align="center">
+
+| Format | Consensus avg rank | Median ratio vs JSON Compact |
+| --- | ---: | ---: |
+| **SDIF AI** | **1.10** | **56.8%** |
+| SDIF | 2.60 | 59.5% |
+| CSV Bundle | 2.70 | 61.2% |
+| YAML | 5.35 | 95.3% |
+| JSON Compact | 5.65 | 100.0% |
+| JSON Pretty | 7.00 | 137.3% |
+| XML | 8.00 | 171.7% |
+
+</div>
+
+<br>
+
+SDIF AI wins 57 of 63 tokenizer/document pairs. SDIF canonical wins 2.
+
+The benchmark repository contains the exact corpus model, generated artifacts and methodology needed to reproduce these numbers.
+
+These results are corpus-dependent. Not every data shape benefits equally from tabular projection. Claude and Llama tokenizers require separate opt-in before claiming results for those models.
+
+For full methodology, corpus model and per-document breakdowns, see [`sdif-benchmarks`](https://github.com/sdif-format/sdif-benchmarks).
+
+<br>
+
+---
+
+## What SDIF is not
+
+SDIF does not try to replace JSON, YAML, CSV, Markdown, XML, Parquet or Protocol Buffers. Those formats are useful and battle-tested.
+
+<table>
+  <tr>
+    <td width="25%" valign="top">
+      <strong>JSON</strong>
+      <br><br>
+      Universal and reliable, but noisy when repeated records dominate.
+    </td>
+    <td width="25%" valign="top">
+      <strong>YAML</strong>
+      <br><br>
+      Readable, but too permissive for deterministic workflows.
+    </td>
+    <td width="25%" valign="top">
+      <strong>CSV</strong>
+      <br><br>
+      Compact, but loses structure, relations and meaning quickly.
+    </td>
+    <td width="25%" valign="top">
+      <strong>Markdown</strong>
+      <br><br>
+      Great for humans, not enough when data must be parsed and verified.
+    </td>
+  </tr>
+</table>
+
+<br>
+
+SDIF focuses on a narrower problem:
+
+<p align="center">
+  <strong>
+    compact, semantic, canonicalizable structured data<br>
+    that can move cleanly between humans, machines and AI systems.
+  </strong>
+</p>
 
 <br>
 
@@ -80,11 +231,13 @@ It does not have runtime dependencies, keeping compilation fast and binaries min
 
 ## Public API
 
+`sdif-rs` provides a zero-copy parser and a span-annotated AST in Rust.
+
 The library exposes the following interface:
 
 - `parse_text(text: &str) -> Result<Document, ParseError>` — Parse a string slice into a span-annotated AST document.
 - `parse_text_with_policy(text: &str, policy: &Policy) -> Result<Document, ParseError>` — Parse using custom size limits and policies.
-- `Policy` — Controls runtime resource boundaries (e.g. document size limits, matching the default 1 MB limit).
+- `Policy` — Controls runtime resource boundaries (e.g., document size limits, matching the default 1 MB limit).
 - `ParseError` — Standard error representation containing error codes, span coordinates, message, and diagnostic hints.
 - `Span` — Zero-copy location tracking (`start_line`, `start_col`, `end_line`, `end_col`, 1-indexed, end exclusive).
 - `Document` / AST nodes — Tree structures representing fields, directives, tables, relations, narratives, rules, and object blocks.
