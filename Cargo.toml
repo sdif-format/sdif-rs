@@ -1,5 +1,5 @@
 [workspace]
-members = ["sdif"]
+members = ["sdif", "cli"]
 resolver = "2"
 
 [workspace.package]
