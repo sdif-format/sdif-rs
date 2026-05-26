@@ -4,8 +4,8 @@
 //! (e.g. `sdif-lsp`). The `parser` module is a placeholder and will be filled
 //! in Task 3.
 
-mod ast;
 pub mod ai;
+mod ast;
 pub mod canonical;
 mod error;
 pub mod json;
@@ -21,10 +21,11 @@ pub use ast::{
     Directive, Document, Field, Narrative, ObjectBlock, Relation, Rule, RuleArg, RuleCall,
     RuleExpression, Statement, Table,
 };
-pub use error::{ParseError, PolicyError};
-pub use lexer::{lex_lines, Token, TokenKind};
 pub use canonical::{canonicalize, sdif_hash};
+pub use error::{ParseError, PolicyError};
 pub use json::{document_to_json, json_to_sdif};
+pub use lexer::{lex_lines, Token, TokenKind};
 pub use parser::{parse_file, parse_text, parse_text_with_policy};
 pub use policy::{Policy, RESERVED_TERMS};
 pub use span::Span;
+pub use validation::{validate, Diagnostic, RelationPolicy, Schema, SchemaError, TablePolicy};
