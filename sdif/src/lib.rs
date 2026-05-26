@@ -11,7 +11,9 @@ pub mod json;
 mod lexer;
 pub mod parser;
 mod policy;
+pub mod schema;
 mod span;
+pub mod validation;
 
 pub use ast::{
     Directive, Document, Field, Narrative, ObjectBlock, Relation, Rule, RuleArg, RuleCall,
