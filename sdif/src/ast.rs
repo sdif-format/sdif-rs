@@ -1,8 +1,9 @@
 //! AST nodes for the SDIF v1 parser.
 //!
-//! Spans are tracked on `ParseError` (for diagnostics) but not on individual
-//! AST nodes — mirroring the Python reference implementation which has no
-//! span fields on its AST types.
+//! Spans are tracked on both `ParseError` (for diagnostics) and on each AST
+//! node (for editor tooling such as hover and go-to-definition).
+
+use crate::span::Span;
 
 // ---------------------------------------------------------------------------
 // Top-level document
@@ -22,6 +23,7 @@ pub struct Document {
 /// A line starting with `@`, e.g. `@sdif 1.0`.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Directive {
+    pub span: Span,
     pub name: String,
     pub args: Vec<String>,
 }
@@ -33,6 +35,7 @@ pub struct Directive {
 /// A key–value field statement.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Field {
+    pub span: Span,
     pub key: String,
     pub value: String,
     /// True when the value was written in double-quotes.
@@ -46,6 +49,7 @@ pub struct Field {
 /// A named block that contains nested statements.
 #[derive(Debug, Clone, PartialEq)]
 pub struct ObjectBlock {
+    pub span: Span,
     pub key: String,
     pub statements: Vec<Statement>,
 }
@@ -57,6 +61,7 @@ pub struct ObjectBlock {
 /// A tabular data block. Columns are separated by literal HTAB characters.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Table {
+    pub span: Span,
     pub name: String,
     pub columns: Vec<String>,
     pub rows: Vec<Vec<String>>,
@@ -73,6 +78,7 @@ pub struct Table {
 /// A triple-style relation statement.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Relation {
+    pub span: Span,
     pub subject: String,
     pub predicate: String,
     pub object: String,
@@ -87,6 +93,7 @@ pub struct Relation {
 /// A narrative (prose) statement associated with a key.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Narrative {
+    pub span: Span,
     pub key: String,
     pub text: String,
 }
@@ -99,6 +106,7 @@ pub struct Narrative {
 /// expression tree.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Rule {
+    pub span: Span,
     pub source: String,
     pub expression: Option<RuleExpression>,
 }
