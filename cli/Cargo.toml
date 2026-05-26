@@ -1,0 +1,14 @@
+[package]
+name = "cli"
+version.workspace = true
+edition.workspace = true
+description = "SDIF command-line tool"
+license.workspace = true
+
+[[bin]]
+name = "sdif"
+path = "src/main.rs"
+
+[dependencies]
+sdif = { path = "../sdif" }
+serde_json = "1"
