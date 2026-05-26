@@ -5,6 +5,7 @@
 //! in Task 3.
 
 mod ast;
+pub mod ai;
 pub mod canonical;
 mod error;
 pub mod json;
@@ -15,6 +16,7 @@ pub mod schema;
 mod span;
 pub mod validation;
 
+pub use ai::ai_view;
 pub use ast::{
     Directive, Document, Field, Narrative, ObjectBlock, Relation, Rule, RuleArg, RuleCall,
     RuleExpression, Statement, Table,

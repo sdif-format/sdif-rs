@@ -570,3 +570,25 @@ fn from_json_produces_parseable_sdif() {
     let doc = sdif::parser::parse_text(&sdif_text).unwrap();
     assert_eq!(doc.fields().find(|f| f.key == "id").unwrap().value, "x1");
 }
+
+#[test]
+fn ai_view_returns_sdif_ai_header() {
+    let doc = sdif::parser::parse_text("@sdif 1.0\nkind Agent\n").unwrap();
+    let view = sdif::ai_view(&doc);
+    assert!(view.contains("@sdif.ai"), "ai_view must emit @sdif.ai header");
+    sdif::parser::parse_text(&view).expect("ai_view output must be valid SDIF");
+}
+
+#[test]
+fn ai_view_conformance_ai_alias_header_parses() {
+    let src = std::fs::read_to_string(
+        concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../sdif-spec/conformance/cases/ai-alias-header/source.sdif"
+        )
+    )
+    .unwrap();
+    let doc = sdif::parser::parse_text(&src).unwrap();
+    let view = sdif::ai_view(&doc);
+    sdif::parser::parse_text(&view).expect("ai_view output must be valid SDIF");
+}
