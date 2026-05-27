@@ -2,218 +2,170 @@
 
 use std::process;
 
+type CliResult<T = ()> = Result<T, String>;
+
+const USAGE: &str = "\
+Usage: sdif <command> [args]
+
+Commands:
+  parse <file.sdif>
+  canonical <file.sdif>
+  hash <file.sdif>
+  validate <file.sdif> [schema.sdif]
+  validate <file.sdif> --schema <schema.sdif>
+  to-json <file.sdif>
+  from-json <file.json>
+  ai-view <file.sdif>
+";
+
 fn main() {
-    process::exit(run());
-}
-
-fn run() -> i32 {
-    let args: Vec<String> = std::env::args().collect();
-    if args.len() < 2 {
-        print_usage();
-        return 1;
-    }
-
-    match args[1].as_str() {
-        "parse" => cmd_parse(&args[2..]),
-        "canonical" => cmd_canonical(&args[2..]),
-        "hash" => cmd_hash(&args[2..]),
-        "validate" => cmd_validate(&args[2..]),
-        "to-json" => cmd_to_json(&args[2..]),
-        "from-json" => cmd_from_json(&args[2..]),
-        "ai-view" => cmd_ai_view(&args[2..]),
-        command => {
-            eprintln!("Unknown command: {command}");
-            print_usage();
+    process::exit(match run() {
+        Ok(()) => 0,
+        Err(message) => {
+            eprintln!("{message}");
             1
         }
+    });
+}
+
+fn run() -> CliResult {
+    let args: Vec<String> = std::env::args().skip(1).collect();
+
+    let Some((command, command_args)) = args.split_first() else {
+        return Err(USAGE.to_string());
+    };
+
+    match command.as_str() {
+        "parse" => cmd_parse(command_args),
+        "canonical" => cmd_canonical(command_args),
+        "hash" => cmd_hash(command_args),
+        "validate" => cmd_validate(command_args),
+        "to-json" => cmd_to_json(command_args),
+        "from-json" => cmd_from_json(command_args),
+        "ai-view" => cmd_ai_view(command_args),
+        unknown => Err(format!("Unknown command: {unknown}\n\n{USAGE}")),
     }
 }
 
-fn print_usage() {
-    eprintln!("Usage: sdif <command> [args]");
-    eprintln!("Commands: parse, canonical, hash, validate, to-json, from-json, ai-view");
-}
-
-fn require_path<'a>(args: &'a [String], usage: &str) -> Result<&'a str, i32> {
-    args.first().map(String::as_str).ok_or_else(|| {
-        eprintln!("Usage: {usage}");
-        1
-    })
-}
-
-fn read_doc_from_file(path: &str) -> Result<sdif::Document, String> {
-    let text = std::fs::read_to_string(path).map_err(|err| format!("cannot read {path}: {err}"))?;
-    sdif::parse_text(&text).map_err(|err| err.to_string())
-}
-
-fn cmd_parse(args: &[String]) -> i32 {
-    let path = match require_path(args, "sdif parse <file.sdif>") {
-        Ok(path) => path,
-        Err(code) => return code,
-    };
-    match read_doc_from_file(path) {
-        Ok(doc) => {
-            println!(
-                "ok: {} fields, {} tables, {} relations",
-                doc.fields().count(),
-                doc.tables().count(),
-                doc.relations().count()
-            );
-            0
-        }
-        Err(err) => {
-            eprintln!("{err}");
-            1
-        }
+fn require_single_path<'a>(args: &'a [String], usage: &str) -> CliResult<&'a str> {
+    match args {
+        [path] => Ok(path),
+        _ => Err(format!("Usage: {usage}")),
     }
 }
 
-fn cmd_canonical(args: &[String]) -> i32 {
-    let path = match require_path(args, "sdif canonical <file.sdif>") {
-        Ok(path) => path,
-        Err(code) => return code,
-    };
-    match read_doc_from_file(path) {
-        Ok(doc) => {
-            print!("{}", sdif::canonicalize(&doc));
-            0
-        }
-        Err(err) => {
-            eprintln!("{err}");
-            1
-        }
-    }
+fn read_text_from_file(path: &str) -> CliResult<String> {
+    std::fs::read_to_string(path).map_err(|error| format!("cannot read {path}: {error}"))
 }
 
-fn cmd_hash(args: &[String]) -> i32 {
-    let path = match require_path(args, "sdif hash <file.sdif>") {
-        Ok(path) => path,
-        Err(code) => return code,
-    };
-    match read_doc_from_file(path) {
-        Ok(doc) => {
-            println!("{}", sdif::sdif_hash(&doc));
-            0
-        }
-        Err(err) => {
-            eprintln!("{err}");
-            1
-        }
-    }
+fn read_doc_from_file(path: &str) -> CliResult<sdif::Document> {
+    let text = read_text_from_file(path)?;
+    sdif::parse_text(&text).map_err(|error| error.to_string())
 }
 
-fn cmd_validate(args: &[String]) -> i32 {
-    let path = match require_path(args, "sdif validate <file.sdif> [schema.sdif]") {
-        Ok(path) => path,
-        Err(code) => return code,
-    };
-    let doc = match read_doc_from_file(path) {
-        Ok(doc) => doc,
-        Err(err) => {
-            eprintln!("{err}");
-            return 1;
-        }
-    };
-    let schema_path = match args.get(1).map(String::as_str) {
-        Some("--schema") => args.get(2).map(String::as_str),
-        Some(path) => Some(path),
-        None => None,
-    };
+fn cmd_parse(args: &[String]) -> CliResult {
+    let path = require_single_path(args, "sdif parse <file.sdif>")?;
+    let doc = read_doc_from_file(path)?;
+
+    println!(
+        "ok: {} fields, {} tables, {} relations",
+        doc.fields().count(),
+        doc.tables().count(),
+        doc.relations().count()
+    );
+
+    Ok(())
+}
+
+fn cmd_canonical(args: &[String]) -> CliResult {
+    let path = require_single_path(args, "sdif canonical <file.sdif>")?;
+    let doc = read_doc_from_file(path)?;
+
+    print!("{}", sdif::canonicalize(&doc));
+
+    Ok(())
+}
+
+fn cmd_hash(args: &[String]) -> CliResult {
+    let path = require_single_path(args, "sdif hash <file.sdif>")?;
+    let doc = read_doc_from_file(path)?;
+
+    println!("{}", sdif::sdif_hash(&doc));
+
+    Ok(())
+}
+
+fn cmd_validate(args: &[String]) -> CliResult {
+    let (doc_path, schema_path) = parse_validate_args(args)?;
+
+    let doc = read_doc_from_file(doc_path)?;
     let schema = match schema_path {
-        Some(schema_path) => match read_doc_from_file(schema_path) {
-            Ok(schema_doc) => match sdif::Schema::from_document(&schema_doc) {
-                Ok(schema) => schema,
-                Err(err) => {
-                    eprintln!("{err}");
-                    return 1;
-                }
-            },
-            Err(err) => {
-                eprintln!("{err}");
-                return 1;
-            }
-        },
+        Some(path) => {
+            let schema_doc = read_doc_from_file(path)?;
+            sdif::Schema::from_document(&schema_doc).map_err(|error| error.to_string())?
+        }
         None => sdif::Schema::default(),
     };
 
     let diagnostics = sdif::validate(&doc, &schema);
+
     if diagnostics.is_empty() {
         println!("ok");
-        0
-    } else {
-        for diagnostic in diagnostics {
-            eprintln!(
-                "{} [{}] {}: {}",
-                diagnostic.code, diagnostic.severity, diagnostic.path, diagnostic.message
-            );
-            if let Some(hint) = diagnostic.hint {
-                eprintln!("hint: {hint}");
-            }
+        return Ok(());
+    }
+
+    for diagnostic in diagnostics {
+        eprintln!(
+            "{} [{}] {}: {}",
+            diagnostic.code, diagnostic.severity, diagnostic.path, diagnostic.message
+        );
+
+        if let Some(hint) = diagnostic.hint {
+            eprintln!("hint: {hint}");
         }
-        1
+    }
+
+    Err("validation failed".to_string())
+}
+
+fn parse_validate_args(args: &[String]) -> CliResult<(&str, Option<&str>)> {
+    match args {
+        [doc_path] => Ok((doc_path, None)),
+        [doc_path, schema_path] if schema_path != "--schema" => Ok((doc_path, Some(schema_path))),
+        [doc_path, flag, schema_path] if flag == "--schema" => Ok((doc_path, Some(schema_path))),
+        _ => Err("Usage: sdif validate <file.sdif> [schema.sdif]\n       sdif validate <file.sdif> --schema <schema.sdif>".to_string()),
     }
 }
 
-fn cmd_to_json(args: &[String]) -> i32 {
-    let path = match require_path(args, "sdif to-json <file.sdif>") {
-        Ok(path) => path,
-        Err(code) => return code,
-    };
-    match read_doc_from_file(path) {
-        Ok(doc) => match serde_json::to_string_pretty(&sdif::document_to_json(&doc)) {
-            Ok(json) => {
-                println!("{json}");
-                0
-            }
-            Err(err) => {
-                eprintln!("{err}");
-                1
-            }
-        },
-        Err(err) => {
-            eprintln!("{err}");
-            1
-        }
-    }
+fn cmd_to_json(args: &[String]) -> CliResult {
+    let path = require_single_path(args, "sdif to-json <file.sdif>")?;
+    let doc = read_doc_from_file(path)?;
+
+    let json = serde_json::to_string_pretty(&sdif::document_to_json(&doc))
+        .map_err(|error| error.to_string())?;
+
+    println!("{json}");
+
+    Ok(())
 }
 
-fn cmd_from_json(args: &[String]) -> i32 {
-    let path = match require_path(args, "sdif from-json <file.json>") {
-        Ok(path) => path,
-        Err(code) => return code,
-    };
-    let text = match std::fs::read_to_string(path) {
-        Ok(text) => text,
-        Err(err) => {
-            eprintln!("cannot read {path}: {err}");
-            return 1;
-        }
-    };
-    match serde_json::from_str::<serde_json::Value>(&text) {
-        Ok(value) => {
-            print!("{}", sdif::json_to_sdif(&value));
-            0
-        }
-        Err(err) => {
-            eprintln!("{err}");
-            1
-        }
-    }
+fn cmd_from_json(args: &[String]) -> CliResult {
+    let path = require_single_path(args, "sdif from-json <file.json>")?;
+
+    let text = read_text_from_file(path)?;
+    let value = serde_json::from_str::<serde_json::Value>(&text)
+        .map_err(|error| error.to_string())?;
+
+    print!("{}", sdif::json_to_sdif(&value));
+
+    Ok(())
 }
 
-fn cmd_ai_view(args: &[String]) -> i32 {
-    let path = match require_path(args, "sdif ai-view <file.sdif>") {
-        Ok(path) => path,
-        Err(code) => return code,
-    };
-    match read_doc_from_file(path) {
-        Ok(doc) => {
-            print!("{}", sdif::ai_view(&doc));
-            0
-        }
-        Err(err) => {
-            eprintln!("{err}");
-            1
-        }
-    }
+fn cmd_ai_view(args: &[String]) -> CliResult {
+    let path = require_single_path(args, "sdif ai-view <file.sdif>")?;
+    let doc = read_doc_from_file(path)?;
+
+    print!("{}", sdif::ai_view(&doc));
+
+    Ok(())
 }
